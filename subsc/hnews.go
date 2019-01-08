@@ -73,3 +73,20 @@ func GetTopStories() ([]int, error) {
 
 	return tops, nil
 }
+
+func GetNewStories() ([]int, error) {
+	res, err := getHackerNews(newstories)
+	if err != nil {
+		log.Println("Failed to get new stories:", err)
+		return nil, err
+	}
+
+	var news []int
+	err = json.Unmarshal(res, &news)
+	if err != nil {
+		log.Println("Failed to unmarshall response:", err)
+		return nil, err
+	}
+
+	return news, nil
+}

@@ -6,9 +6,11 @@ import (
 )
 
 func main() {
-	tops, _ := GetTopStories()
-	log.Println(fmt.Sprintf("Result: %v, %v, %v, ...", tops[0], tops[1], tops[2]))
+	news, _ := GetNewStories()
+	log.Println(fmt.Sprintf("Result: %v, %v, %v, ...", news[0], news[1], news[2]))
 
-	item, _ := GetItem(tops[0])
+	item, _ := GetItem(news[0])
 	log.Println(fmt.Sprintf("Story %v: %v", item.Id, item.Title))
+
+	writeItemToFile(item)
 }
