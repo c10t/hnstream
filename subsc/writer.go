@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 )
 
-func writeItemToFile(i Item) {
-	path := fmt.Sprintf("%v-%d.json", i.Type, i.Id)
+func writeItemToFile(saveDir string, i Item) {
+	path := filepath.Join(saveDir, fmt.Sprintf("%v-%d.json", i.Type, i.Id))
 
 	b, err := json.Marshal(i)
 	if err != nil {
