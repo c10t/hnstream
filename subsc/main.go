@@ -4,22 +4,61 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 )
 
 func main() {
-	news, _ := GetNewStories()
-	log.Println(fmt.Sprintf("Result: %v, %v, %v, ...", news[0], news[1], news[2]))
+	/*
+		news, _ := GetNewStories()
+		log.Println(fmt.Sprintf("Result: %v, %v, %v, ...", news[0], news[1], news[2]))
 
-	item, _ := GetItem(news[0])
-	log.Println(fmt.Sprintf("Story %v: %v", item.Id, item.Title))
+		item, _ := GetItem(news[0])
+		log.Println(fmt.Sprintf("Story %v: %v", item.Id, item.Title))
 
-	before, _ := theItemExisted(item.Id)
-	log.Println(fmt.Sprintf("JSON existed? -> %v", before))
-	writeItemToFile("resources", item)
-	after, _ := theItemExisted(item.Id)
-	log.Println(fmt.Sprintf("JSON existed? -> %v", after))
+		before, _ := theItemExisted(item.Id)
+		log.Println(fmt.Sprintf("JSON existed? -> %v", before))
+		writeItemToFile("resources", item)
+		after, _ := theItemExisted(item.Id)
+		log.Println(fmt.Sprintf("JSON existed? -> %v", after))
+	*/
+
+	// ---
+	ctx, cancel := context.WithCancel(context.Background())
+	signalChan := make(chan os.Signal, 1)
+
+	go func() {
+		<-signalChan
+		cancel()
+		log.Println("main: stopping...")
+	}()
+
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	ids := make(chan int)
+	go streamNewStories(ctx, ids)
+	writeStories(ids)
+}
+
+func writeStories(ids <-chan int) {
+	for id := range ids {
+		item, err := GetItem(id)
+		if err != nil {
+			log.Println("failed to get item:", err)
+		}
+		existed, err := theItemExisted(item.Id)
+		if err != nil {
+			log.Println("failed to check if item is already exist:", err)
+		}
+		if !existed && err == nil {
+			writeItemToFile("resources", item)
+		}
+		time.Sleep(10 * time.Second)
+	}
+	log.Println("[Writer] stopped")
 }
 
 func streamNewStories(ctx context.Context, ids chan<- int) {
@@ -32,7 +71,7 @@ func streamNewStories(ctx context.Context, ids chan<- int) {
 		case <-ctx.Done():
 			log.Println("stop to read new stories...")
 			return
-		case <-time.After(10 * time.Second):
+		case <-time.After(5 * time.Second):
 		}
 		log.Println("repeat to read new stories...")
 	}
@@ -53,26 +92,23 @@ func readNewStories(ctx context.Context, timeout time.Duration, ids chan<- int) 
 
 	go func() {
 		defer close(done)
-
-	loop:
-		for {
-			log.Println("start loop")
-			for _, id := range news {
-				exist, err := theItemExisted(id)
-				if err != nil {
-					break loop
-				}
-				if !exist {
-					log.Println("send new id to channel:", id)
-					ids <- id
-				}
+		for _, id := range news[:10] {
+			exist, err := theItemExisted(id)
+			if err != nil {
+				log.Println("failed to check if the item is existed:", err)
+			}
+			if !exist {
+				log.Println("send new id to channel:", id)
+				ids <- id
 			}
 		}
 	}()
 
 	select {
 	case <-ctx.Done():
+		log.Println("received ctx.Done()")
 	case <-done:
+		log.Println("received done")
 	}
 }
 
