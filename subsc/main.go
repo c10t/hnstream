@@ -12,21 +12,6 @@ import (
 )
 
 func main() {
-	/*
-		news, _ := GetNewStories()
-		log.Println(fmt.Sprintf("Result: %v, %v, %v, ...", news[0], news[1], news[2]))
-
-		item, _ := GetItem(news[0])
-		log.Println(fmt.Sprintf("Story %v: %v", item.Id, item.Title))
-
-		before, _ := theItemExisted(item.Id)
-		log.Println(fmt.Sprintf("JSON existed? -> %v", before))
-		writeItemToFile("resources", item)
-		after, _ := theItemExisted(item.Id)
-		log.Println(fmt.Sprintf("JSON existed? -> %v", after))
-	*/
-
-	// ---
 	ctx, cancel := context.WithCancel(context.Background())
 	signalChan := make(chan os.Signal, 1)
 
@@ -56,7 +41,7 @@ func writeStories(ids <-chan int) {
 		if !existed && err == nil {
 			writeItemToFile("resources", item)
 		}
-		time.Sleep(10 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 	log.Println("[Writer] stopped")
 }
@@ -69,7 +54,7 @@ func streamNewStories(ctx context.Context, ids chan<- int) {
 		log.Println("--- (waiting) ---")
 		select {
 		case <-ctx.Done():
-			log.Println("stop to read new stories...")
+			log.Println("stop reading new stories...")
 			return
 		case <-time.After(5 * time.Second):
 		}
@@ -92,7 +77,7 @@ func readNewStories(ctx context.Context, timeout time.Duration, ids chan<- int) 
 
 	go func() {
 		defer close(done)
-		for _, id := range news[:10] {
+		for _, id := range news {
 			exist, err := theItemExisted(id)
 			if err != nil {
 				log.Println("failed to check if the item is existed:", err)
@@ -100,6 +85,12 @@ func readNewStories(ctx context.Context, timeout time.Duration, ids chan<- int) 
 			if !exist {
 				log.Println("send new id to channel:", id)
 				ids <- id
+			}
+			select {
+			case <-ctx.Done():
+				log.Println("received ctx.Done() so stop iteration")
+				return
+			default:
 			}
 		}
 	}()
