@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 )
@@ -23,34 +21,38 @@ func main() {
 
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 
+	var myData AccessMyData
+	myData = UseLocalFiles
+
 	ids := make(chan int)
-	go streamNewStories(ctx, ids)
-	writeStories(ids)
+	go streamNewStories(ctx, ids, myData)
+
+	writeStories(ids, myData)
 }
 
-func writeStories(ids <-chan int) {
+func writeStories(ids <-chan int, myData AccessMyData) {
 	for id := range ids {
 		item, err := GetItem(id)
 		if err != nil {
 			log.Println("failed to get item:", err)
 		}
-		existed, err := theItemExisted(item.Id)
+		existed, err := myData.Exist(item.Id)
 		if err != nil {
 			log.Println("failed to check if item is already exist:", err)
 		}
 		if !existed && err == nil {
-			writeItemToFile("resources", item)
+			myData.Write("resources", item)
+			time.Sleep(3 * time.Second)
 		}
-		time.Sleep(3 * time.Second)
 	}
 	log.Println("[Writer] stopped")
 }
 
-func streamNewStories(ctx context.Context, ids chan<- int) {
+func streamNewStories(ctx context.Context, ids chan<- int, myData AccessMyData) {
 	defer close(ids)
 	for {
 		log.Println("start to read new stories...")
-		readNewStories(ctx, 1*time.Minute, ids)
+		readNewStories(ctx, 1*time.Minute, ids, myData)
 		log.Println("--- (waiting) ---")
 		select {
 		case <-ctx.Done():
@@ -62,7 +64,7 @@ func streamNewStories(ctx context.Context, ids chan<- int) {
 	}
 }
 
-func readNewStories(ctx context.Context, timeout time.Duration, ids chan<- int) {
+func readNewStories(ctx context.Context, timeout time.Duration, ids chan<- int, myData AccessMyData) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -78,7 +80,7 @@ func readNewStories(ctx context.Context, timeout time.Duration, ids chan<- int) 
 	go func() {
 		defer close(done)
 		for _, id := range news {
-			exist, err := theItemExisted(id)
+			exist, err := myData.Exist(id)
 			if err != nil {
 				log.Println("failed to check if the item is existed:", err)
 			}
@@ -100,21 +102,5 @@ func readNewStories(ctx context.Context, timeout time.Duration, ids chan<- int) 
 		log.Println("received ctx.Done()")
 	case <-done:
 		log.Println("received done")
-	}
-}
-
-func theItemExisted(id int) (bool, error) {
-	// todo: consider a better way to check
-	matches, err := filepath.Glob(
-		filepath.Join("resources", fmt.Sprintf("*-%d.json", id)))
-
-	if err != nil {
-		log.Println("failed to glob:", err)
-		return false, err
-	}
-	if len(matches) == 0 {
-		return false, nil
-	} else {
-		return true, nil
 	}
 }
