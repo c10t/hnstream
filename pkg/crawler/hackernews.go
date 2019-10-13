@@ -1,4 +1,4 @@
-package main
+package crawler
 
 import (
 	"encoding/json"
@@ -13,8 +13,7 @@ const item = base + "item/%d.json"
 const topstories = base + "topstories.json"
 const newstories = base + "newstories.json"
 
-func getHackerNews(url string) ([]byte, error) {
-	log.Println("Try to request to " + url)
+func doGetRequest(url string) ([]byte, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Println("Failed to create request:", err)
@@ -42,7 +41,7 @@ func getHackerNews(url string) ([]byte, error) {
 func GetItem(id int) (Item, error) {
 	i := Item{}
 
-	res, err := getHackerNews(fmt.Sprintf(item, id))
+	res, err := doGetRequest(fmt.Sprintf(item, id))
 	if err != nil {
 		log.Println("Failed to get Item:", err)
 		return i, err
@@ -58,7 +57,7 @@ func GetItem(id int) (Item, error) {
 }
 
 func GetTopStories() ([]int, error) {
-	res, err := getHackerNews(topstories)
+	res, err := doGetRequest(topstories)
 	if err != nil {
 		log.Println("Failed to get Top Stories:", err)
 		return nil, err
