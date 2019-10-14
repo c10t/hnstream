@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	t "github.com/c10t/gohn/pkg/types"
 )
 
 const base = "https://hacker-news.firebaseio.com/v0/"
@@ -38,8 +40,8 @@ func doGetRequest(url string) ([]byte, error) {
 	return body, nil
 }
 
-func GetItem(id int) (Item, error) {
-	i := Item{}
+func GetItem(id int) (t.Item, error) {
+	i := t.Item{}
 
 	res, err := doGetRequest(fmt.Sprintf(item, id))
 	if err != nil {
@@ -74,7 +76,7 @@ func GetTopStories() ([]int, error) {
 }
 
 func GetNewStories() ([]int, error) {
-	res, err := getHackerNews(newstories)
+	res, err := doGetRequest(newstories)
 	if err != nil {
 		log.Println("Failed to get new stories:", err)
 		return nil, err

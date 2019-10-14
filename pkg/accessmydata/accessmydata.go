@@ -7,11 +7,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+
+	t "github.com/c10t/gohn/pkg/types"
 )
 
 type AccessMyData interface {
 	Exist(id int) (bool, error)
-	Write(saveTo string, i Item)
+	Write(saveTo string, i t.Item)
 }
 
 type LocalFiles struct{}
@@ -35,7 +37,7 @@ func (LocalFiles) Exist(id int) (bool, error) {
 	}
 }
 
-func (LocalFiles) Write(saveTo string, i Item) {
+func (LocalFiles) Write(saveTo string, i t.Item) {
 	path := filepath.Join(saveTo, fmt.Sprintf("%v-%d.json", i.Type, i.Id))
 
 	b, err := json.Marshal(i)
